@@ -1,6 +1,7 @@
 const express = require("express");
 const http = require("http");
 const authRoutes = require("./routes/authRoutes");
+const friendInvitationRoutes = require("./routes/friendInvitationRoutes");
 const app = express();
 const mongoose = require("mongoose");
 const validateToken = require("./middlewares/authMiddlewares");
@@ -13,17 +14,13 @@ const PORT = process.env.PORT || process.env.API_PORT;
 const DB_USER = process.env.DB_USER;
 const DB_NAME = process.env.DB_NAME;
 
-app.use(cors()); 
+app.use(cors());
 app.use(express.json()); // parse api requests in json format
 app.use("/api/auth", authRoutes);
-
-app.get("/test",validateToken ,  (req, res) => {
-  res.send("Welcome to the Discord Clone API");
-});
+app.use("/api/friend-invitation" , friendInvitationRoutes)
 
 const server = http.createServer(app);
 registerServer(server);
-
 
 mongoose
   .connect(
