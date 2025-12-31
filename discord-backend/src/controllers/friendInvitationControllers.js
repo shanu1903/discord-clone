@@ -1,6 +1,9 @@
 const UserModel = require("../models/usersModels");
 const FriendInvitationModel = require("../models/friendInvitationModel");
-const updatePendingInvitations = require("../socketHandlers/updated/friends");
+const {
+  updatePendingInvitations,
+  updateFriendsList,
+} = require("../socketHandlers/updated/friends");
 const postFriendInvite = async (req, res) => {
   try {
     const { targetMailAddress } = req.body;
@@ -47,7 +50,6 @@ const postFriendInvite = async (req, res) => {
 
     updatePendingInvitations(targetUser._id.toString());
 
-      
     return res.status(201).json("Friend invitation sent successfully");
   } catch (error) {
     console.error("Error in postFriendInvite:", error);
@@ -55,8 +57,64 @@ const postFriendInvite = async (req, res) => {
   }
 };
 
+const postAcceptInvite = async (req, res) => {
+  try {
+    const { id: invitationId } = req.body;
+
+    // does invitation exist
+    const invitation = await FriendInvitationModel.findOne({
+      _id: invitationId,
+    });
+
+    if (invitation) {
+      // update friends list in bother sender and receiver user
+      const { senderId, receiverId } = invitation;
+
+      const senderUser = await UserModel.findById(senderId);
+      const receiverUser = await UserModel.findById(receiverId);
+
+      senderUser.friends = [...senderUser.friends, receiverId];
+      receiverUser.friends = [...receiverUser.friends, senderId];
+
+      await senderUser.save();
+      await receiverUser.save();
+
+      // now delete invitation from model
+      await FriendInvitationModel.findByIdAndDelete(invitationId);
+
+      // update frinds list for both sender and receiver user
+      updateFriendsList(senderId);
+      updateFriendsList(receiverId);
+      // update pending invitation for user
+      updatePendingInvitations(receiverId);
+    }
+  } catch (error) {
+    console.error("Error in postAcceptInvite:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const postRejectInvite = async (req, res) => {
+  try {
+    const { id: invitationId } = req.body;
+    // does invitation exists
+    const invitation = await FriendInvitationModel.findOne({
+      _id: invitationId,
+    });
+
+    if (invitation) {
+      await FriendInvitationModel.findByIdAndDelete(invitationId);
+    }
+  } catch (error) {
+    console.error("Error in postRecjectInvite:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const friendInvitationControllers = {
   postFriendInvite,
+  postRejectInvite,
+  postAcceptInvite,
 };
 
 module.exports = friendInvitationControllers;

@@ -1,5 +1,9 @@
 const FriendInvitationModel = require("../../models/friendInvitationModel");
-const { getActiveConnections, getSocketInstance } = require("../../serverStore");
+const usersModels = require("../../models/usersModels");
+const {
+  getActiveConnections,
+  getSocketInstance,
+} = require("../../serverStore");
 
 const updatePendingInvitations = async (userId) => {
   // logic to update pending invitations for the user with userId
@@ -8,12 +12,11 @@ const updatePendingInvitations = async (userId) => {
     const pendingInvitations = await FriendInvitationModel.find({
       receiverId: userId,
     }).populate("senderId", "_id username mail");
-      
-    console.log("pending invitations for user ", userId, ": ", pendingInvitations);
+
 
     const activeConnections = getActiveConnections(userId);
     const io = getSocketInstance();
-      activeConnections.forEach((socketId) => {
+    activeConnections.forEach((socketId) => {
       io.to(socketId).emit("friends-invitations", {
         pendingInvitations: pendingInvitations ? pendingInvitations : [],
       });
@@ -23,4 +26,25 @@ const updatePendingInvitations = async (userId) => {
   }
 };
 
-module.exports = updatePendingInvitations;
+const updateFriendsList = async (userId) => {
+  const activeConnections = getActiveConnections(userId);
+
+  if (activeConnections.length > 0) {
+    const user = await usersModels
+      .findById(userId)
+      .populate("friends", "_id mail username");
+    const io = getSocketInstance();
+    activeConnections.forEach((socketId) => {
+      io.to(socketId).emit("friends-list", {
+        friends:
+          user.friends?.map((friend) => ({
+            id: friend._id,
+            mail: friend.mail,
+            username: friend.username,
+          })) ?? [],
+      });
+    });
+  }
+};
+
+module.exports = { updatePendingInvitations, updateFriendsList };
