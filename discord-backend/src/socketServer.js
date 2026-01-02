@@ -16,7 +16,6 @@ const registerServer = (server) => {
 
   const emitOnlineUsers = () => {
     const onlineUsers = getOnlineUsers();
-    console.log("online-users", onlineUsers);
     io.emit("online-users", { onlineUsers });
   };
 
